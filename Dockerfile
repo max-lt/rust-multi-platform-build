@@ -33,31 +33,25 @@ RUN touch $RUNTIME_SNAPSHOT_PATH
 # (4) Build the Rust project
 COPY . .
 
-RUN cargo build --release   --target x86_64-unknown-linux-gnu
+RUN cargo build --release
 
-RUN cargo  build --release --target aarch64-unknown-linux-gnu
+FROM builder AS platform
+
+ARG TARGETPLATFORM
+
+RUN echo "Building for $TARGETPLATFORM"
+
+RUN case "$TARGETPLATFORM" in \
+    "linux/arm64") cargo build --release --target aarch64-unknown-linux-gnu && mv /app/target/aarch64-unknown-linux-gnu/release/rust-multi-platform-build /app/output ;; \
+    "linux/amd64") cargo build --release --target x86_64-unknown-linux-gnu  && mv /app/target/x86_64-unknown-linux-gnu/release/rust-multi-platform-build  /app/output ;; \
+    *) echo "Unsupported platform: $TARGETPLATFORM" && exit 1 ;; \
+    esac
 
 FROM debian:bookworm-slim
 
-ARG TARGETPLATFORM
-ARG TARGETOS
-ARG TARGETARCH
-ARG TARGETVARIANT
-
-RUN echo "Building for $TARGETPLATFORM ($TARGETOS/$TARGETARCH/$TARGETVARIANT)"
-RUN echo "$PWD"
-
 WORKDIR /app
 
-# Copy the appropriate binary based on the platform
-COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/rust-multi-platform-build  /app/amd64
-COPY --from=builder /app/target/aarch64-unknown-linux-gnu/release/rust-multi-platform-build /app/arm64
-
-RUN case "$TARGETPLATFORM" in \
-    "linux/arm64") mv /app/arm64 /app/output && rm /app/amd64 ;; \
-    "linux/amd64") mv /app/amd64 /app/output && rm /app/arm64 ;; \
-    *) echo "Unsupported platform: $TARGETPLATFORM" && exit 1 ;; \
-    esac
+COPY --from=platform /app/output /app/output
 
 CMD ["/app/output"]
 
