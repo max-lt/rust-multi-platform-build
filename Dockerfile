@@ -33,11 +33,9 @@ RUN touch $RUNTIME_SNAPSHOT_PATH
 # (4) Build the Rust project
 COPY . .
 
-RUN cargo build --release \
-    --target x86_64-unknown-linux-gnu
+RUN cargo build --release   --target x86_64-unknown-linux-gnu
 
-RUN cargo  build --release \
-    --target aarch64-unknown-linux-gnu
+RUN cargo  build --release --target aarch64-unknown-linux-gnu
 
 FROM debian:bookworm-slim
 
